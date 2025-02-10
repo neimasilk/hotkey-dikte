@@ -2,13 +2,13 @@
 Hotkey Dikte - Speech-to-Text dengan Whisper AI
 ============================================
 
-Program untuk mengubah suara menjadi teks menggunakan Whisper AI.
+Program untuk mengubah suara menjadi teks menggunakan Whisper AI dengan optimasi TensorRT.
 Tekan CTRL+ALT+SPACE untuk mulai/stop merekam, ESC untuk keluar.
 
 Requires:
 - sounddevice
 - numpy
-- openai-whisper
+- faster-whisper (optimized with TensorRT)
 - pyautogui
 - keyboard
 - pystray
@@ -32,6 +32,7 @@ from threading import Thread, Event
 import sys
 import winreg
 import traceback  # Tambah ini untuk debug
+from faster_whisper import WhisperModel
 
 # Config
 SAMPLE_RATE = 16000
@@ -156,15 +157,22 @@ def transcribe_and_type():
                 tray.update_status("idle")
             return
         
-        result = model.transcribe(
+        segments, info = model.transcribe(
             audio,
             language="id",
             task="transcribe",
             initial_prompt="Transkripsi percakapan Bahasa Indonesia dengan jelas dan akurat.",
-            fp16=True
+            beam_size=5,
+            best_of=5,
+            temperature=0.0,
+            compression_ratio_threshold=2.4,
+            log_prob_threshold=-1.0,
+            no_speech_threshold=0.6,
+            condition_on_previous_text=True,
+            vad_filter=True
         )
         
-        text = result["text"].strip()
+        text = " ".join([segment.text for segment in segments]).strip()
         print(f"🖨️ Hasil: '{text}'")
         
         if text:
@@ -213,7 +221,15 @@ def main():
     try:
         print(f"🤖 Loading model {MODEL_SIZE}...")
         global model, tray
-        model = whisper.load_model(MODEL_SIZE, device="cuda")
+        model = WhisperModel(
+            MODEL_SIZE,
+            device="cuda",
+            compute_type="float16",
+            cpu_threads=4,
+            num_workers=1,
+            download_root=None,
+            local_files_only=False
+        )
 
         # Setup audio stream
         stream = sd.InputStream(

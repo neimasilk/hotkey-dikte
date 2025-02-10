@@ -4,4 +4,7 @@ openai-whisper
 pyautogui
 keyboard
 pystray
-Pillow 
+Pillow
+torch
+tensorrt
+faster-whisper 
