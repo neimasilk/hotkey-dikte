@@ -30,45 +30,23 @@ import pystray
 from PIL import Image, ImageDraw
 from threading import Thread, Event
 import sys
+import winreg
+import traceback  # Tambah ini untuk debug
 
-class Config:
-    def __init__(self):
-        self.sample_rate = 16000
-        self.device_id = 1
-        self.hotkey = "ctrl+alt+space"
-        self.model_size = "small"
-        self.language = "id"
-        
-    @classmethod
-    def load(cls, path="config.json"):
-        config = cls()
-        if Path(path).exists():
-            with open(path, "r") as f:
-                data = json.load(f)
-                config.sample_rate = data.get("sample_rate", config.sample_rate)
-                config.device_id = data.get("device_id", config.device_id)
-                config.hotkey = data.get("hotkey", config.hotkey)
-                config.model_size = data.get("model_size", config.model_size)
-                config.language = data.get("language", config.language)
-        return config
-    
-    def save(self, path="config.json"):
-        with open(path, "w") as f:
-            json.dump({
-                "sample_rate": self.sample_rate,
-                "device_id": self.device_id,
-                "hotkey": self.hotkey,
-                "model_size": self.model_size,
-                "language": self.language
-            }, f, indent=4)
+# Config
+SAMPLE_RATE = 16000
+DEVICE_ID = 1
+HOTKEY = "ctrl+alt+space"
+MODEL_SIZE = "medium"  # Ganti dari "small" ke "medium"
+EXIT_HOTKEY = "ctrl+alt+q"
 
-    def create_default_config(self):
-        self.save("config.json")
-        print("✅ Config file created: config.json")
+# Global variables
+audio_frames = []
+is_recording = False
+tray = None
 
 class TrayIcon:
-    def __init__(self, config):
-        self.config = config
+    def __init__(self):
         self.icon = None
         self.status = "idle"
         self.menu = None
@@ -84,23 +62,17 @@ class TrayIcon:
         self.init_menu()
         
     def create_image(self, color):
-        # Buat gambar dengan background transparan
         image = Image.new('RGBA', (64, 64), (0, 0, 0, 0))
         dc = ImageDraw.Draw(image)
         
         # Gambar mikrofon
-        # Base mikrofon
         dc.rectangle((28, 40, 36, 48), fill=color)
         dc.ellipse((26, 38, 38, 42), fill=color)
-        
-        # Badan mikrofon
         dc.rectangle((24, 16, 40, 40), fill=color)
-        dc.ellipse((24, 14, 40, 18), fill=color)  # Top rounded
-        dc.ellipse((24, 38, 40, 42), fill=color)  # Bottom rounded
+        dc.ellipse((24, 14, 40, 18), fill=color)
+        dc.ellipse((24, 38, 40, 42), fill=color)
         
-        # Stand mikrofon
         if color == "red":  # Recording state
-            # Tambah gelombang suara
             for i in range(3):
                 offset = (i + 1) * 6
                 dc.arc((20-offset, 12-offset, 44+offset, 36+offset), 
@@ -116,7 +88,7 @@ class TrayIcon:
                 enabled=False
             ),
             pystray.MenuItem(
-                f"Hotkey: {self.config.hotkey}",
+                f"Hotkey: {HOTKEY}",
                 lambda: None,
                 enabled=False
             ),
@@ -140,8 +112,8 @@ class TrayIcon:
             self.icon.title = f"Hotkey Dikte - {status.capitalize()}"
             
     def exit_program(self):
+        kb._exit_flag = True
         self.icon.stop()
-        sys.exit(0)
         
     def run(self):
         self.icon = pystray.Icon(
@@ -150,116 +122,145 @@ class TrayIcon:
             menu=self.menu,
             title="Hotkey Dikte - Ready"
         )
-        # Tambahkan flag ini agar ikon selalu terlihat
-        if hasattr(self.icon, '_icon'):  # Windows
-            self.icon._icon.version = None
         self.icon.run()
-
-# Global variables
-audio_frames = []
-is_recording = False
-tray = None  # Will store TrayIcon instance
-
-# Load config and model
-config = Config.load()
-model = whisper.load_model(config.model_size, device="cuda")
 
 def record_callback(indata, frames, time, status):
     global audio_frames
-    if is_recording:
-        audio_frames.append(indata.copy())
+    try:
+        if status:
+            print(f"⚠️ Status: {status}")
+        if is_recording:
+            audio_frames.append(indata.copy())
+    except Exception as e:
+        print(f"❌ Error in callback: {e}")
+        traceback.print_exc()
 
 def transcribe_and_type():
     global audio_frames, tray
-    if not audio_frames:
-        print("❌ No audio")
-        return
-    
-    if tray:
-        tray.update_status("processing")
-    
-    # Proses audio
-    audio = np.concatenate(audio_frames).flatten()
-    
-    # Debug info
-    duration = len(audio) / config.sample_rate
-    print(f"📊 Debug: {len(audio_frames)} frames, durasi {duration:.2f} detik")
-    
-    # Skip jika terlalu pendek
-    if duration < 0.5:
-        print("❌ Audio terlalu pendek")
+    try:
+        if not audio_frames:
+            print("❌ No audio")
+            return
+        
+        if tray:
+            tray.update_status("processing")
+        
+        audio = np.concatenate(audio_frames).flatten()
+        duration = len(audio) / SAMPLE_RATE
+        print(f"📊 Debug: {len(audio_frames)} frames, durasi {duration:.2f} detik")
+        
+        if duration < 0.5:
+            print("❌ Audio terlalu pendek")
+            audio_frames.clear()
+            if tray:
+                tray.update_status("idle")
+            return
+        
+        result = model.transcribe(
+            audio,
+            language="id",
+            task="transcribe",
+            initial_prompt="Transkripsi percakapan Bahasa Indonesia dengan jelas dan akurat.",
+            fp16=True
+        )
+        
+        text = result["text"].strip()
+        print(f"🖨️ Hasil: '{text}'")
+        
+        if text:
+            time.sleep(0.1)
+            pyautogui.write(text)
         audio_frames.clear()
+        
         if tray:
             tray.update_status("idle")
-        return
-    
-    # Transkripsi
-    result = model.transcribe(
-        audio,
-        language=config.language,
-        task="transcribe",
-        initial_prompt="Transkripsi percakapan Bahasa Indonesia dengan jelas dan akurat.",
-        fp16=True
-    )
-    
-    text = result["text"].strip()
-    print(f"🖨️ Hasil: '{text}'")
-    
-    if text:
-        time.sleep(0.1)
-        pyautogui.write(text)
-    audio_frames.clear()
-    
-    if tray:
-        tray.update_status("idle")
+    except Exception as e:
+        print(f"❌ Error in transcribe: {e}")
+        traceback.print_exc()
+        audio_frames.clear()
 
 def on_hotkey():
     global is_recording, tray
-    is_recording = not is_recording
-    if is_recording:
-        print("🎤 RECORDING...")
-        if tray:
-            tray.update_status("recording")
-        audio_frames.clear()
-    else:
-        print("⏳ Processing...")
-        transcribe_and_type()
+    try:
+        is_recording = not is_recording
+        if is_recording:
+            print("🎤 RECORDING...")
+            if tray:
+                tray.update_status("recording")
+            audio_frames.clear()
+        else:
+            print("⏳ Processing...")
+            transcribe_and_type()
+    except Exception as e:
+        print(f"❌ Error in hotkey: {e}")
+        traceback.print_exc()
+
+def set_tray_behavior():
+    try:
+        # Hanya set registry untuk menampilkan semua ikon
+        key = winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            r"Software\Microsoft\Windows\CurrentVersion\Explorer",
+            0, 
+            winreg.KEY_ALL_ACCESS
+        )
+        winreg.SetValueEx(key, "EnableAutoTray", 0, winreg.REG_DWORD, 0)
+        winreg.CloseKey(key)
+    except:
+        pass
 
 def main():
-    global tray, config
-    
-    # Load atau buat config
-    config = Config.load()
-    if not Path("config.json").exists():
-        config.create_default_config()
-    
-    # Setup tray icon
-    tray = TrayIcon(config)
-    tray_thread = Thread(target=tray.run, daemon=True)
-    tray_thread.start()
-
-    # Setup audio stream
-    stream = sd.InputStream(
-        device=config.device_id,
-        samplerate=config.sample_rate,
-        channels=1,
-        callback=record_callback,
-        blocksize=1024
-    )
-    stream.start()
-
-    # Hotkey handler
-    kb.add_hotkey(config.hotkey, on_hotkey)
-    print(f"🔥 PRESS {config.hotkey} | ESC to EXIT")
-    print("💡 Tips: Bicara dengan jelas dan tidak terlalu cepat")
-
     try:
-        kb.wait("esc")
+        print(f"🤖 Loading model {MODEL_SIZE}...")
+        global model, tray
+        model = whisper.load_model(MODEL_SIZE, device="cuda")
+
+        # Setup audio stream
+        stream = sd.InputStream(
+            device=DEVICE_ID,
+            samplerate=SAMPLE_RATE,
+            channels=1,
+            callback=record_callback,
+            blocksize=1024
+        )
+        
+        print("🎤 Starting audio stream...")
+        stream.start()
+
+        # Setup tray icon
+        tray = TrayIcon()
+        tray_thread = Thread(target=tray.run, daemon=True)
+        tray_thread.start()
+
+        # Hotkey handler
+        kb.add_hotkey(HOTKEY, on_hotkey)
+        kb.add_hotkey(EXIT_HOTKEY, lambda: setattr(kb, "_exit_flag", True))
+        
+        print(f"🔥 PRESS {HOTKEY} untuk mulai/stop rekam")
+        print(f"🚪 PRESS {EXIT_HOTKEY} untuk keluar")
+        print("💡 Tips: Bicara dengan jelas dan tidak terlalu cepat")
+
+        # Keep program running
+        print("🟢 Program running...")
+        kb._exit_flag = False
+        while not kb._exit_flag:
+            if not stream.active:
+                print("⚠️ Warning: Stream tidak aktif!")
+                break
+            time.sleep(0.1)
+
+    except Exception as e:
+        print(f"❌ Error in main: {e}")
+        traceback.print_exc()
     finally:
-        stream.stop()
-        print("\nProgram berhenti...")
-        if tray and tray.icon:
-            tray.icon.stop()
+        print("\n⏹️ Stopping stream...")
+        try:
+            stream.stop()
+            stream.close()
+            print("✅ Stream berhasil dihentikan")
+        except Exception as e:
+            print(f"⚠️ Error saat menghentikan stream: {e}")
+        print("👋 Program berhenti...")
 
 if __name__ == "__main__":
     main()
