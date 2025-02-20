@@ -22,6 +22,29 @@ Program speech-to-text sederhana menggunakan Whisper AI. Program ini dapat mengu
 
 ## Instalasi
 
+1. Install Anaconda dari https://www.anaconda.com/download
+2. Buat environment baru:
+   ```
+   conda create -n dikte python=3.8
+   ```
+3. Aktifkan environment:
+   ```
+   conda activate dikte
+   ```
+4. Install dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
+5. Buat shortcut untuk dikte.vbs:
+   - Klik kanan dikte.vbs > Send to > Desktop
+   - Klik kanan shortcut di desktop > Properties
+   - Ganti icon (opsional)
+   - Centang "Run as administrator"
+6. Untuk autostart:
+   - Windows + R
+   - Ketik shell:startup
+   - Copy shortcut ke folder startup
+
 ## Penggunaan
 
 1. Jalankan program dengan double click `hotkey_dikte.bat` atau:
