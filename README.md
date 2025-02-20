@@ -65,8 +65,9 @@ Program speech-to-text sederhana menggunakan Whisper AI untuk mengubah suara men
    ```
 
 2. Jalankan aplikasi:
-   - Double click `hotkey_dikte.bat`, atau
-   - Jalankan `python app.py` di terminal
+   ```bash
+   python app.py
+   ```
 
 3. Program akan berjalan di system tray (icon mikrofon)
    - 🟢 Hijau: Siap digunakan
