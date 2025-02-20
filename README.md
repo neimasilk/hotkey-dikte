@@ -6,9 +6,11 @@ Program speech-to-text sederhana menggunakan Whisper AI untuk mengubah suara men
 
 - 🎙️ Transkripsi suara ke teks real-time menggunakan Whisper AI
 - ⌨️ Hotkey kustomisasi untuk kontrol rekaman (default: CTRL+ALT+SPACE)
+- 🚪 Hotkey untuk keluar dari aplikasi (default: CTRL+ALT+Q)
 - ⚙️ Konfigurasi yang fleksibel dan mudah disesuaikan
 - 🇮🇩 Dukungan penuh untuk Bahasa Indonesia
-- 🖥️ Berjalan di system tray untuk penggunaan yang nyaman
+- 📝 Logging system untuk troubleshooting
+- 🖥️ Berjalan di system tray dengan status indikator
 
 ## Persyaratan Sistem
 
@@ -31,16 +33,16 @@ Program speech-to-text sederhana menggunakan Whisper AI untuk mengubah suara men
 
 1. Install [Anaconda](https://www.anaconda.com/download) atau [Miniconda](https://docs.conda.io/en/latest/miniconda.html)
 
-2. Buka Anaconda Prompt dan buat environment baru:
+2. Clone repository ini:
+   ```bash
+   git clone https://github.com/yourusername/hotkey-dikte.git
+   cd hotkey-dikte
+   ```
+
+3. Buat environment baru:
    ```bash
    conda create -n dikte python=3.8
    conda activate dikte
-   ```
-
-3. Clone repository ini atau download sebagai ZIP:
-   ```bash
-   git clone https://github.com/username/hotkey-dikte.git
-   cd hotkey-dikte
    ```
 
 4. Install dependencies yang diperlukan:
@@ -80,25 +82,24 @@ Program speech-to-text sederhana menggunakan Whisper AI untuk mengubah suara men
 
 Edit file `config.json` untuk menyesuaikan pengaturan:
 
-```json
-{
-    "sample_rate": 16000,
-    "device_id": null,
-    "hotkey": "ctrl+alt+space",
-    "exit_hotkey": "ctrl+alt+q",
-    "model_size": "base",
-    "language": "id",
-    "initial_prompt": ""
-}
-```
-
+### Audio Settings
 - `sample_rate`: Sample rate audio (default: 16000)
 - `device_id`: ID perangkat audio input (null untuk default)
-- `hotkey`: Kombinasi tombol untuk trigger rekaman
-- `exit_hotkey`: Kombinasi tombol untuk keluar aplikasi
+- `channels`: Jumlah channel audio (default: 1)
+- `blocksize`: Ukuran block audio (default: 1024)
+
+### Transcriber Settings
 - `model_size`: Ukuran model Whisper ("tiny", "base", "small", "medium", "large")
 - `language`: Kode bahasa ("id" untuk Indonesia)
-- `initial_prompt`: Prompt awal untuk meningkatkan akurasi (opsional)
+- `initial_prompt`: Prompt awal untuk meningkatkan akurasi
+- `use_cuda`: Gunakan GPU untuk transcription (true/false)
+
+### Hotkey Settings
+- `record_hotkey`: Hotkey untuk mulai/stop rekaman (default: "ctrl+alt+space")
+- `exit_hotkey`: Hotkey untuk keluar aplikasi (default: "ctrl+alt+q")
+
+### Logging Settings
+- `log_path`: Path untuk file log (default: "app.log")
 
 ## Troubleshooting
 
@@ -116,6 +117,10 @@ Edit file `config.json` untuk menyesuaikan pengaturan:
    - Pastikan semua dependencies terinstall
    - Jalankan sebagai administrator
    - Periksa log error di terminal
+
+4. **CUDA not available**
+   - Pastikan driver NVIDIA terinstall
+   - Cek instalasi PyTorch dengan CUDA support
 
 ## Kontribusi
 
