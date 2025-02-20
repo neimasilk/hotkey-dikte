@@ -20,11 +20,12 @@ class SimpleSpeechToText:
         self.device_id = 1  # Default device
         self.is_recording = False
         self.audio_frames = []
+        self.max_audio_length = 5.0  # Maximum audio length in seconds
         
         # Initialize Whisper model
         print("Loading Whisper model...")
         device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.model = whisper.load_model("medium", device=device)
+        self.model = whisper.load_model("base", device=device)  # Using smaller base model
         print(f"Model loaded on {device}")
         
         # Try to find a working audio device
@@ -42,34 +43,101 @@ class SimpleSpeechToText:
         if status:
             print(f"Audio callback status: {status}")
         if self.is_recording:
+            # Append new audio data
             self.audio_frames.append(indata.copy())
             
-            # Perform real-time transcription every 2 seconds
+            # Calculate current buffer duration
             audio_length = len(self.audio_frames) * self.blocksize / self.sample_rate
-            if audio_length >= 2.0:  # Process every 2 seconds of audio
-                audio_data = np.concatenate(self.audio_frames)
-                text = self.transcribe(audio_data)
-                if text:
-                    print(f"\rReal-time transcription: {text}")
-                self.audio_frames.clear()
+            
+            # Process every 1 second of audio for better memory management
+            if audio_length >= 1.0:
+                try:
+                    # Concatenate audio frames
+                    audio_data = np.concatenate(self.audio_frames)
+                    
+                    # Convert to float32 if needed and ensure proper memory cleanup
+                    if audio_data.dtype != np.float32:
+                        audio_data = audio_data.astype(np.float32)
+                    
+                    # Clear CUDA cache before transcription
+                    if hasattr(torch.cuda, 'empty_cache'):
+                        torch.cuda.empty_cache()
+                    
+                    # Transcribe with memory-efficient settings
+                    result = self.model.transcribe(
+                        audio_data,
+                        language="id",
+                        task="transcribe",
+                        initial_prompt="Transkripsi percakapan Bahasa Indonesia",
+                        fp16=True,
+                        beam_size=1
+                    )
+                    
+                    # Clear CUDA cache and delete unused variables
+                    if hasattr(torch.cuda, 'empty_cache'):
+                        torch.cuda.empty_cache()
+                    del audio_data
+                    
+                    text = result["text"].strip()
+                    if text:
+                        print(f"\rTranscription: {text}", end="", flush=True)
+                    
+                    # Clear result from memory
+                    del result
+                except Exception as e:
+                    print(f"\nError processing audio: {e}")
+                finally:
+                    # Keep only the last 0.2 seconds of audio for context
+                    retain_frames = int(0.2 * self.sample_rate / self.blocksize)
+                    if len(self.audio_frames) > retain_frames:
+                        self.audio_frames = self.audio_frames[-retain_frames:]
     
     def transcribe(self, audio_data: np.ndarray) -> Optional[str]:
         """Transcribe audio data to text."""
         try:
-            # Ensure audio data is in the correct format
-            if audio_data.dtype != np.float32:
-                audio_data = audio_data.astype(np.float32)
+            # Process audio in smaller chunks
+            chunk_duration = 30  # Process 30 seconds at a time
+            chunk_samples = int(chunk_duration * self.sample_rate)
             
-            # Transcribe
-            result = self.model.transcribe(
-                audio_data,
-                language="id",
-                task="transcribe",
-                initial_prompt="Transkripsi percakapan Bahasa Indonesia",
-                fp16=False
-            )
+            # Initialize result text
+            full_text = []
             
-            return result["text"].strip()
+            # Process audio in chunks
+            for i in range(0, len(audio_data), chunk_samples):
+                # Get chunk of audio
+                chunk = audio_data[i:i + chunk_samples]
+                
+                # Ensure audio data is in the correct format
+                if chunk.dtype != np.float32:
+                    chunk = chunk.astype(np.float32)
+                
+                # Clear CUDA cache before transcription
+                if hasattr(torch.cuda, 'empty_cache'):
+                    torch.cuda.empty_cache()
+                
+                # Transcribe with memory-efficient settings
+                result = self.model.transcribe(
+                    chunk,
+                    language="id",
+                    task="transcribe",
+                    initial_prompt="Transkripsi percakapan Bahasa Indonesia",
+                    fp16=True,
+                    beam_size=1
+                )
+                
+                # Append transcribed text
+                if result["text"].strip():
+                    full_text.append(result["text"].strip())
+                
+                # Clear memory
+                del chunk
+                del result
+                if hasattr(torch.cuda, 'empty_cache'):
+                    torch.cuda.empty_cache()
+            
+            # Combine all transcribed text
+            return " ".join(full_text) if full_text else None
+            
         except Exception as e:
             print(f"Transcription error: {e}")
             return None

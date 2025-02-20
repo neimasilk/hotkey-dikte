@@ -1,8 +1,8 @@
-# Hotkey Dikte
+# 🎙️ Hotkey Dikte
 
 Program speech-to-text sederhana menggunakan Whisper AI untuk mengubah suara menjadi teks secara real-time dengan hotkey. Cocok untuk pengguna yang ingin mendiktekan teks dengan cepat dan mudah.
 
-## Fitur
+## ✨ Fitur
 
 - 🎙️ Transkripsi suara ke teks real-time menggunakan Whisper AI
 - ⌨️ Hotkey kustomisasi untuk kontrol rekaman (default: CTRL+ALT+SPACE)
@@ -10,16 +10,16 @@ Program speech-to-text sederhana menggunakan Whisper AI untuk mengubah suara men
 - ⚙️ Konfigurasi yang fleksibel dan mudah disesuaikan
 - 🇮🇩 Dukungan penuh untuk Bahasa Indonesia
 - 📝 Logging system untuk troubleshooting
-- 🖥️ Berjalan di system tray dengan status indikator
+- 🖥️ Berjalan di system tray dengan indikator status
 
-## Persyaratan Sistem
+## 💻 Persyaratan Sistem
 
 - Python 3.8 atau lebih baru
 - CUDA-capable GPU (opsional, untuk performa optimal)
 - Mikrofon yang berfungsi dengan baik
 - Sistem Operasi: Windows
 
-## Dependencies
+## 📦 Dependencies
 
 - sounddevice - untuk perekaman audio
 - numpy - untuk pemrosesan data audio
@@ -28,14 +28,15 @@ Program speech-to-text sederhana menggunakan Whisper AI untuk mengubah suara men
 - keyboard - untuk manajemen hotkey
 - pystray - untuk sistem tray icon
 - Pillow - untuk pemrosesan gambar icon
+- torch - untuk Whisper AI
 
-## Instalasi
+## 🚀 Instalasi
 
 1. Install [Anaconda](https://www.anaconda.com/download) atau [Miniconda](https://docs.conda.io/en/latest/miniconda.html)
 
-2. Clone repository ini:
+2. Clone repository ini atau download sebagai ZIP:
    ```bash
-   git clone https://github.com/yourusername/hotkey-dikte.git
+   git clone https://github.com/username/hotkey-dikte.git
    cd hotkey-dikte
    ```
 
@@ -56,7 +57,7 @@ Program speech-to-text sederhana menggunakan Whisper AI untuk mengubah suara men
    - Centang "Run as administrator"
    - Untuk autostart: copy shortcut ke `shell:startup`
 
-## Penggunaan
+## 🎯 Penggunaan
 
 1. Aktifkan environment conda:
    ```bash
@@ -78,64 +79,39 @@ Program speech-to-text sederhana menggunakan Whisper AI untuk mengubah suara men
    - Lepas hotkey untuk mengkonversi suara ke teks
    - Klik kanan pada icon tray untuk menu tambahan
 
-## Konfigurasi
+## ⚙️ Konfigurasi
 
-Edit file `config.json` untuk menyesuaikan pengaturan:
+Konfigurasi dapat diubah melalui file `config.json` dengan format berikut:
 
-### Audio Settings
-- `sample_rate`: Sample rate audio (default: 16000)
-- `device_id`: ID perangkat audio input (null untuk default)
-- `channels`: Jumlah channel audio (default: 1)
-- `blocksize`: Ukuran block audio (default: 1024)
+```json
+{
+    "sample_rate": 16000,
+    "device_id": 1,
+    "hotkey": "ctrl+alt+space",
+    "exit_hotkey": "ctrl+alt+q",
+    "model_size": "medium",
+    "language": "id",
+    "initial_prompt": "Transkripsi percakapan Bahasa Indonesia dengan jelas dan akurat."
+}
+```
 
-### Transcriber Settings
-- `model_size`: Ukuran model Whisper ("tiny", "base", "small", "medium", "large")
-- `language`: Kode bahasa ("id" untuk Indonesia)
-- `initial_prompt`: Prompt awal untuk meningkatkan akurasi
-- `use_cuda`: Gunakan GPU untuk transcription (true/false)
+## 🔧 Troubleshooting
 
-### Hotkey Settings
-- `record_hotkey`: Hotkey untuk mulai/stop rekaman (default: "ctrl+alt+space")
-- `exit_hotkey`: Hotkey untuk keluar aplikasi (default: "ctrl+alt+q")
-
-### Logging Settings
-- `log_path`: Path untuk file log (default: "app.log")
-
-## Troubleshooting
-
-1. **Tidak ada suara terekam**
+1. **Mikrofon tidak terdeteksi**
    - Pastikan mikrofon terpasang dengan benar
-   - Periksa `device_id` di config.json
-   - Periksa izin mikrofon di Windows
+   - Cek pengaturan mikrofon di Windows
+   - Sesuaikan `device_id` di config
 
-2. **Hasil transkripsi tidak akurat**
-   - Coba gunakan model yang lebih besar
+2. **Transkripsi tidak akurat**
    - Bicara lebih jelas dan pelan
-   - Sesuaikan `initial_prompt` untuk konteks spesifik
+   - Coba ganti `model_size` ke "large"
+   - Sesuaikan `initial_prompt`
 
-3. **Program tidak berjalan**
-   - Pastikan semua dependencies terinstall
-   - Jalankan sebagai administrator
-   - Periksa log error di terminal
+3. **Program tidak merespon**
+   - Restart program
+   - Cek log di console
+   - Pastikan hotkey tidak konflik
 
-4. **CUDA not available**
-   - Pastikan driver NVIDIA terinstall
-   - Cek instalasi PyTorch dengan CUDA support
+## 📄 Lisensi
 
-## Kontribusi
-
-1. Fork repository ini
-2. Buat branch fitur baru (`git checkout -b fitur-keren`)
-3. Commit perubahan (`git commit -am 'Menambah fitur keren'`)
-4. Push ke branch (`git push origin fitur-keren`)
-5. Buat Pull Request
-
-## Lisensi
-
-MIT License - Lihat [LICENSE](LICENSE) untuk detail lebih lanjut.
-
-## Kredit
-
-Dibuat dengan ❤️ menggunakan:
-- [OpenAI Whisper](https://github.com/openai/whisper)
-- [Python](https://www.python.org/)
+Dilepaskan di bawah lisensi MIT. Lihat file `LICENSE` untuk detailnya.
