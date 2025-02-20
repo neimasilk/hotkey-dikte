@@ -4,4 +4,4 @@ openai-whisper
 pyautogui
 keyboard
 pystray
-Pillow 
+Pill
